@@ -4,9 +4,9 @@
 
 #define MAX_LINES 	300
 
-static int dma_xfer = 0;
-static int dma_complete = 0;
-static uint8_t buf[164 * MAX_LINES];
+volatile static int dma_xfer = 0;
+volatile static int dma_complete = 0;
+volatile static uint8_t buf[164 * MAX_LINES];
 
 void show_error(int count)
 {
@@ -50,9 +50,9 @@ int run(SPI_HandleTypeDef * hspi, UART_HandleTypeDef * huart)
 			xfers = 0;
 			while (xfers < MAX_LINES)
 			{
-			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
 			  //if (HAL_SPI_Receive(hspi, packet, 164, 100) != HAL_OK)
 			  dma_complete = 0;
+			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
 			  status = HAL_SPI_Receive_DMA(hspi, &buf[164*xfers], 164);
 			  //status = HAL_SPI_Receive_DMA(hspi, packet, 164);
 			  //status = HAL_SPI_Receive_IT(hspi, packet, 164);
@@ -61,11 +61,17 @@ int run(SPI_HandleTypeDef * hspi, UART_HandleTypeDef * huart)
 				  show_error(5);
 			  }
 			  while (dma_complete == 0) {};
+			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 
 			  uint16_t packet_num = ((uint16_t)buf[164*xfers+0] << 8) | buf[164*xfers+1];
 			  if ((packet_num & 0x0F00) != 0x0F00)
 			  {
 				  xfers++;
+			  }
+			  // Delay 64 SCK
+			  for (volatile int i = 0; i < 300; i++)
+			  {
+				  // Delay???
 			  }
 			}
 			// Transfer all of the data
